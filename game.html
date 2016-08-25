@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 
 <%!
-    HOLDER_BOTTOM=100
+    HOLDER_BOTTOM=100 #px
+    CIRCLE_HEIGHT=12 #px
+    CIRCLE_WIDTH=40 #%
+    SLIDER_WIDTH=25 #%
+    BORDER_WIDTH=10 #%
+
+    import json
 
     def fixspace(x):
         return x.replace('+',' ')
@@ -15,10 +21,10 @@
     <style>
         body {
             background-color: black;
-            transition: background-color 250ms ease-out;
+            transition: background-color 200ms ease-out;
         }
         body[data-flashing=flash] {
-            background-color: darkblue;
+            background-color: #555;
             transition: null;
         }
         #title-bar {
@@ -49,17 +55,17 @@
             width: 100%;
             height: 100%;
             background-size: cover;
-            opacity: .5;
+            opacity: .6;
         }
         #innocent-holder {
             position: fixed;
             left: 0;
             bottom: ${HOLDER_BOTTOM}px;
             width: 100%;
-            height: 10px;
+            height: ${CIRCLE_HEIGHT}px;
             background-color: lightgreen;
             z-index: 20;
-            opacity: .5;
+            opacity: .7;
         }
         #below-holder {
             position: fixed;
@@ -69,7 +75,7 @@
             bottom: 0;
             background-color: grey;
             z-index: 90;
-            opacity: .5;
+            opacity: .6;
         }
         .msg-popup {
             position:fixed;
@@ -91,31 +97,42 @@
             z-index: 10;
         }
         .hit-obj-circle {
-            background-color:white;
-            left: 25%;
-            width: 50%;
+            width: ${CIRCLE_WIDTH}%;
+            opacity: 1;
+            filter: contrast(60%) brightness(175%);
         }
         .vanishing {
             opacity: 0;
             transition: opacity 300ms ease-out;
             z-index: 100;
+            width: 100%;
+            left: 0 !important;
+            filter: initial;
         }
         .hit-obj-circle.vanishing {
-            background-color: orange;
+            background-color: white !important;
+            z-index: 140;
         }
         .hit-obj-slider {
-            background-color: cornflowerblue;
-            left: 35%;
-            width: 30%;
+            width: ${SLIDER_WIDTH}%;
+            filter: contrast(60%) brightness(150%);
             opacity: .6;
         }
+        .hit-obj-slider.holding {
+            filter: contrast(60%) brightness(175%);
+            opacity: 1;
+        }
         .hit-obj-slider-checker {
-            background-color: orange;
-            left: 35%;
-            width: 30%;
+            background-color: white;
+            filter: initial !important;
+            width: 100%;
+            height: ${CIRCLE_HEIGHT}px;
+            left: 0;
+            z-index: 140;
         }
         .hit-obj-spinner {
-            background-color: orange;
+            background-color: orange !important;
+            filter: initial !important;
             left: 0;
             width: 100%;
             opacity: .6;
@@ -140,10 +157,13 @@
         var CLAP_TIME_DELTA=30,
             ANTI_FAULT_THRESHOLD=400,
             MISS_THRESHOLD=250,
-            SLIDER_END_THRESHOLD=200,
+            SLIDER_END_THRESHOLD=100,
             FALL_SPEED=.75,
             DRAW_CANVAS_THRESHOLD=(screen.height+100)/FALL_SPEED,
-            CIRCLE_HEIGHT=10,
+            CIRCLE_HEIGHT=${CIRCLE_HEIGHT},
+            CIRCLE_SIZE=${CIRCLE_WIDTH},
+            SLIDER_SIZE=${SLIDER_WIDTH},
+            COLORS=JSON.parse('${json.dumps(colors)}'),
             player=document.getElementById('player'),
             stage=document.getElementById('game-stage'),
             msgs=document.getElementById('msgs'),
@@ -151,6 +171,8 @@
             hitobj_nodes={},
             flashtime=[],
             state='idle',
+            incoming_pos=null,
+            incoming_color_ind=-1,
             cur_ind= 0,
             incoming_ind=0,
             flash_ind=0,
@@ -192,24 +214,21 @@
                     return;
                 }
                 if(curobj.type==='slider') {
-                    if(event.keyCode===32/*space*/) {
-                        curnod.style.backgroundColor='blue';
-                        var obj_dom=document.createElement('div');
-                        obj_dom.className='hit-obj hit-obj-slider-checker';
-                        obj_dom.style.height=CIRCLE_HEIGHT+'px';
-                        obj_dom.style.bottom=curnod.style.bottom;
-                        obj_dom.dataset.stopped=true;
-                        stage.appendChild(obj_dom);
+                    curnod.dataset.keycode=event.keyCode;
+                    curnod.className=curnod.className+' holding';
+                    var obj_dom=document.createElement('div');
+                    obj_dom.className='hit-obj hit-obj-slider-checker';
+                    obj_dom.style.bottom=curnod.style.bottom;
+                    obj_dom.dataset.stopped=true;
+                    stage.appendChild(obj_dom);
+                    setTimeout(function() {
+                        obj_dom.className=obj_dom.className+' vanishing';
                         setTimeout(function() {
-                            obj_dom.className=obj_dom.className+' vanishing';
-                            setTimeout(function() {
-                                stage.removeChild(obj_dom);
-                            },350);
-                        },100);
-                        msg(Math.round(time_delta)+'ms');
-                        window.cur_slider=curnod;
-                    } else
-                        return;
+                            stage.removeChild(obj_dom);
+                        },350);
+                    },100);
+                    msg(Math.round(time_delta)+'ms');
+                    window.cur_slider=curnod;
                 } else if(curobj.type==='circle') {
                     curnod.className=curnod.className+' vanishing';
                     curnod.dataset.stopped=true;
@@ -222,19 +241,16 @@
                 window.cur_ind++;
                 window.state='idle';
             } else if(state==='spinner') {
-                //todo: spinner counting
                 msg('Hit x'+(++hitobjs[cur_ind].count));
                 flash(hitobj_nodes[cur_ind]);
             }
         }
 
         function keyup_callback(event) {
-            if(event.keyCode===32/*space*/ && cur_slider!==null) {
+            if(cur_slider!==null && ''+event.keyCode===cur_slider.dataset.keycode) {
                 var time_delta=cur_slider.dataset.stop_time-player.currentTime*1000;
                 if(time_delta>SLIDER_END_THRESHOLD)
                     msg('Slider '+Math.round(time_delta)+' ms missed');
-                else
-                    msg('Slider passed');
                 stage.removeChild(cur_slider);
                 window.cur_slider=null;
             }
@@ -262,7 +278,7 @@
 
             if(curobj.type==='stop') {
                 redraw_stage(time);
-                if(curobj.time>time) //still have time to go
+                if(Math.round(player.duration*1000)-10>time) //still have time to go
                     return requestAnimationFrame(tick);
                 else {
                     msg('Well done');
@@ -317,10 +333,21 @@
                 var obj_dom=document.createElement('div');
                 obj_dom.dataset.time=nxtobj.time;
                 obj_dom.className='hit-obj hit-obj-'+nxtobj.type;
-                if(nxtobj.type==='circle')
+
+                if(nxtobj.newcombo) {
+                    window.incoming_pos=Math.random();
+                    window.incoming_color_ind=(window.incoming_color_ind+1)%COLORS.length;
+                }
+
+                obj_dom.style.backgroundColor='rgb('+COLORS[window.incoming_color_ind]+')';
+                if(nxtobj.type==='circle') {
                     obj_dom.style.height=CIRCLE_HEIGHT+'px';
+                    obj_dom.style.left=(${BORDER_WIDTH}+incoming_pos*${(100-CIRCLE_WIDTH-2*BORDER_WIDTH)/2})+'%';
+                }
                 else if(nxtobj.type==='slider' || nxtobj.type==='spinner') {
                     obj_dom.style.height=((nxtobj.stop_time-nxtobj.time)*FALL_SPEED)+'px';
+                    if(nxtobj.type==='slider')
+                        obj_dom.style.left=(${BORDER_WIDTH+(CIRCLE_WIDTH-SLIDER_WIDTH)/2}+incoming_pos*${(100-CIRCLE_WIDTH-2*BORDER_WIDTH)/2})+'%';
                     obj_dom.dataset.stop_time=nxtobj.stop_time;
                 }
                 else
@@ -355,7 +382,8 @@
             }
         }
         window.flashtime=flashtime.sort(function(fuck,js){return fuck-js;});
-        hitobjs.push({time: Math.round(player.duration*1000)-5, type:'stop'});
+        hitobjs.push({time: 2147483647, type:'stop'});
+        hitobjs[0].newcombo=true;
         requestAnimationFrame(tick);
         addEventListener('keydown',start);
     </script>

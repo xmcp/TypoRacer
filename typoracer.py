@@ -12,10 +12,20 @@ import re
 
 osu_url_re=re.compile(r'^(?:https?://)?osu\.ppy\.sh/[sd]/(\d+)n?$')
 
+class FakeFile:
+    def __init__(self,content):
+        self.file=io.BytesIO(content)
+
 class Website:
     maps={}
     songs={}
     ind=0
+
+    def __init__(self):
+        try:
+            self.load(FakeFile(open('example.osz','rb').read()))
+        except cherrypy.HTTPRedirect:
+            pass
 
     @cherrypy.expose()
     def index(self):
@@ -34,6 +44,7 @@ class Website:
             audio_url='/song/%d'%beatmap['songid'],
             beatmap=beatmap['beatmap'],
             bg_url='/bg_img/%d'%mapid,
+            colors=beatmap['colors'],
         )
 
     @cherrypy.expose()
@@ -48,13 +59,7 @@ class Website:
 
     @cherrypy.expose()
     def load(self,file):
-        def get_opt(section,option):
-            for line in parser.options(section):
-                k,_,v=line.partition(':')
-                if k.strip()==option:
-                    return v.strip()
-            raise AssertionError('bad beatmap file')
-
+        get_opt=lambda *_:beatmap_parser.get_opt(parser,*_)
         def unquote(x):
             return x[1:-1] if x[0]=='"' and x[-1]=='"' else x
 
@@ -79,6 +84,10 @@ class Website:
             else:
                 songid=int(get_opt('Metadata','BeatmapSetID'))
             bg_fn=unquote(parser.options('Events')[0].split(',')[2])
+            if 'Colours' in parser.sections():
+                colors=[list(map(int,line.partition(':')[2].strip().split(','))) for line in parser.options('Colours') if line]
+            else:
+                colors=[(255,128,0),(0,202,0),(18,124,255),(242,24,57)]
 
             self.maps[mapid]={
                 'mapid':mapid,
@@ -88,7 +97,8 @@ class Website:
                 'version':version,
                 'beatmap':beatmap_parser.parse(beatmap_str),
                 'background':zipf.open(bg_fn).read(),
-                'ind':self.ind
+                'ind':self.ind,
+                'colors':colors,
             }
             self.ind+=1
 
@@ -102,10 +112,6 @@ class Website:
 
     @cherrypy.expose()
     def peppy(self,peppy_id,username,password):
-        class FakeFile:
-            def __init__(self,content):
-                self.file=io.BytesIO(content)
-
         mat=osu_url_re.match(peppy_id)
         peppy_id=int(mat.groups()[0] if mat else peppy_id)
         s=requests.Session()
