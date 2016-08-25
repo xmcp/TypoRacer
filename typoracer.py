@@ -83,7 +83,13 @@ class Website:
                 assert songid==int(get_opt('Metadata','BeatmapSetID')), 'different setid in one map set'
             else:
                 songid=int(get_opt('Metadata','BeatmapSetID'))
-            bg_fn=unquote(parser.options('Events')[0].split(',')[2])
+            for line in parser.options('Events'):
+                splited=line.split(',')
+                if splited[0]!='Video':
+                    bg_fn=unquote(splited[2])
+                    break
+            else:
+                raise AssertionFailed('no background image')
             if 'Colours' in parser.sections():
                 colors=[list(map(int,line.partition(':')[2].strip().split(','))) for line in parser.options('Colours') if line]
             else:
