@@ -77,18 +77,30 @@
             z-index: 90;
             opacity: .6;
         }
+        #score-popup {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 75px;
+            margin: auto;
+            z-index: 160;
+            filter: brightness(120%) drop-shadow(0 0 20px black);
+        }
         .msg-popup {
             position:fixed;
             width:100%;
-            font-size: 50px;
+            font-size: 30px;
             font-family: consolas, monospace;
             left: 0;
             bottom: ${HOLDER_BOTTOM+100}px;
             text-align:center;
             color: white;
             z-index:120;
+            text-shadow: 0 0 5px black;
         }
-        .msg-popup.hidden {
+        .hidden {
             opacity: 0;
             transition: opacity .5s ease-in;
         }
@@ -150,15 +162,17 @@
     <div id="innocent-holder"></div>
     <div id="below-holder"></div>
     <div id="game-stage"></div>
+    <img id="score-popup" class="hidden" src="0">
     <div id="msgs"><div class="msg-popup">Press any key to start</div></div>
     <audio src="${audio_url}" preload="auto" id="player"></audio>
 
     <script>
         var CLAP_TIME_DELTA=30,
             ANTI_FAULT_THRESHOLD=400,
-            MISS_THRESHOLD=250,
-            SLIDER_END_THRESHOLD=100,
+            MISS_THRESHOLD=200,
+            SLIDER_END_THRESHOLD=50,
             FALL_SPEED=.75,
+            MS_PER_SPINNER_TYPE=50,
             DRAW_CANVAS_THRESHOLD=(screen.height+100)/FALL_SPEED,
             CIRCLE_HEIGHT=${CIRCLE_HEIGHT},
             CIRCLE_SIZE=${CIRCLE_WIDTH},
@@ -166,6 +180,7 @@
             COLORS=JSON.parse('${json.dumps(colors)}'),
             player=document.getElementById('player'),
             stage=document.getElementById('game-stage'),
+            score_popup=document.getElementById('score-popup'),
             msgs=document.getElementById('msgs'),
             hitobjs=[],
             hitobj_nodes={},
@@ -177,6 +192,23 @@
             incoming_ind=0,
             flash_ind=0,
             cur_slider=null;
+
+        function score(scor) {
+            score_popup.src='/static/score/'+scor+'.png';
+            score_popup.className='';
+            setTimeout(function() {
+                score_popup.className='hidden';
+            },100);
+        }
+        function judge_score(scor) {
+            scor=Math.abs(scor);
+            if(scor<20) return 'max';
+            else if(scor<50) return '300';
+            else if(scor<100) return '200';
+            else if(scor<150) return '100';
+            else if(scor<200) return '50';
+            else return 'miss';
+        }
 
         function msg(txt) {
             var msg_popup=document.createElement('div');
@@ -210,7 +242,7 @@
                     delete hitobj_nodes[cur_ind];
                     window.state='idle';
                     window.cur_ind++;
-                    msg('Miss');
+                    score('miss');
                     return;
                 }
                 if(curobj.type==='slider') {
@@ -228,6 +260,7 @@
                         },350);
                     },100);
                     msg(Math.round(time_delta)+'ms');
+                    score(judge_score(time_delta));
                     window.cur_slider=curnod;
                 } else if(curobj.type==='circle') {
                     curnod.className=curnod.className+' vanishing';
@@ -236,21 +269,35 @@
                        stage.removeChild(curnod);
                     },350);
                     msg(Math.round(time_delta)+'ms');
+                    score(judge_score(time_delta));
                 } else
                     throw 'bad obj type: '+curobj.type;
                 window.cur_ind++;
                 window.state='idle';
             } else if(state==='spinner') {
-                msg('Hit x'+(++hitobjs[cur_ind].count));
+                var curspinner=hitobjs[cur_ind];
+                msg('Hit '+(++curspinner.count)+'/'+curspinner.clear_count);
                 flash(hitobj_nodes[cur_ind]);
+                if(curspinner.count==curspinner.clear_count)
+                    score('clear');
             }
         }
 
         function keyup_callback(event) {
             if(cur_slider!==null && ''+event.keyCode===cur_slider.dataset.keycode) {
-                var time_delta=cur_slider.dataset.stop_time-player.currentTime*1000;
-                if(time_delta>SLIDER_END_THRESHOLD)
-                    msg('Slider '+Math.round(time_delta)+' ms missed');
+                var time_delta=player.currentTime*1000-cur_slider.dataset.stop_time;
+
+                msg(Math.round(time_delta)+'ms');
+                var total_time=parseInt(cur_slider.dataset.stop_time)-parseInt(cur_slider.dataset.time);
+
+                time_delta=Math.abs(time_delta);
+                if(time_delta<SLIDER_END_THRESHOLD) score('max');
+                else if(time_delta<SLIDER_END_THRESHOLD*2) score('300');
+                else if(time_delta<SLIDER_END_THRESHOLD*3) score('200');
+                else if(time_delta/total_time<.25) score('100');
+                else if(time_delta/total_time<.4) score('50');
+                else score('miss');
+
                 stage.removeChild(cur_slider);
                 window.cur_slider=null;
             }
@@ -301,7 +348,9 @@
                 if(curobj.type==='spinner') {
                     if(curobj.time<=time) {
                         curobj.count=0;
+                        curobj.clear_count=Math.round((curobj.stop_time-curobj.time)/MS_PER_SPINNER_TYPE);
                         window.state='spinner';
+                        score('spin');
                     }
                 } else if(curobj.time-time<ANTI_FAULT_THRESHOLD)
                     window.state='approaching'
@@ -311,13 +360,14 @@
                     delete hitobj_nodes[cur_ind];
                     window.state='idle';
                     window.cur_ind++;
-                    //todo: handle miss
-                    msg('Miss');
+                    score('miss');
                     return tick();
                 }
             } else if(state==='spinner') {
                 if(curobj.stop_time<time) {
                     console.log('quit spinner');
+                    if(curobj.count<curobj.clear_count)
+                        score('miss');
                     window.state='idle';
                     stage.removeChild(hitobj_nodes[cur_ind]);
                     window.cur_ind++;
@@ -386,6 +436,20 @@
         hitobjs[0].newcombo=true;
         requestAnimationFrame(tick);
         addEventListener('keydown',start);
+
+        [ //cache resources
+            '/static/clap.wav',
+            '/static/score/max.png',
+            '/static/score/300.png',
+            '/static/score/200.png',
+            '/static/score/100.png',
+            '/static/score/50.png',
+            '/static/score/miss.png',
+            '/static/score/spin.png',
+            '/static/score/clear.png'
+        ].forEach(function(fn) {
+            new Image(fn);
+        })
     </script>
 
 </body>

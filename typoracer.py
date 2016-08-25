@@ -140,5 +140,8 @@ cherrypy.quickstart(Website(),'/',{
     '/static': {
         'tools.staticdir.on':True,
         'tools.staticdir.dir':os.path.join(os.getcwd(),'static'),
-    }
+        'tools.response_headers.headers': [
+            ('Cache-Control','max-age=86400'),
+        ],
+    },
 })
