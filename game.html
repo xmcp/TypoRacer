@@ -152,18 +152,62 @@
         .hit-obj-spinner[data-flashing=flash] {
             background-color: orangered !important;
         }
+
+        /* pie chart: http://www.kylejlarson.com/blog/how-to-create-pie-charts-with-css3/ */
+        .pie-container {
+            position: fixed;
+            height: 30px;
+            width: 30px;
+            top: 10px;
+            right: 20px;
+            z-index: 80;
+        }
+        .pie-bg {
+            background-color: grey;
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            opacity: .6;
+        }
+        .pie {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            clip: rect(0px, 15px, 30px, 0px);
+            background-color: lightgreen;
+        }
+        .pie-hold {
+            position: absolute;
+            height: 30px;
+            width: 30px;
+            border-radius: 50%;
+            clip: rect(0px, 30px, 30px, 15px);
+        }
+        .pie-hold-2 {
+            transform: rotate(.5turn);
+        }
     </style>
 
 </head>
 <body>
 
-    <div id="title-bar"><a href="/" target="_self">&lt;返回 &nbsp; ${title|h}</a></div>
+    <div id="title-bar"><a href="/" target="_self">&lt;返回主页 &nbsp; ${title|h}</a></div>
     <div id="bg-image" style="background-image: url(${bg_url})"></div>
     <div id="innocent-holder"></div>
     <div id="below-holder"></div>
     <div id="game-stage"></div>
     <img id="score-popup" class="hidden" src="0">
     <div id="msgs"><div class="msg-popup">Press any key to start</div></div>
+
+    <div class="pie-container">
+         <div class="pie-bg"></div>
+         <div class="pie-hold"><div id="progress-pie-1" class="pie"></div></div>
+         <div class="pie-hold pie-hold-2"><div id="progress-pie-2" class="pie"></div></div>
+    </div>
+
+
     <audio src="${audio_url}" preload="auto" id="player"></audio>
 
     <script>
@@ -182,10 +226,12 @@
             stage=document.getElementById('game-stage'),
             score_popup=document.getElementById('score-popup'),
             msgs=document.getElementById('msgs'),
+            progress1=document.getElementById('progress-pie-1'),
+            progress2=document.getElementById('progress-pie-2'),
             hitobjs=[],
             hitobj_nodes={},
             flashtime=[],
-            score_history={'max':0,'300':0,'200':0,'100':0,'50':0,'miss':0},
+            score_history={'max':0,'300':0,'200':0,'100':0,'50':0,'miss':0,'clear':0},
             state='idle',
             incoming_pos=null,
             incoming_color_ind=-1,
@@ -194,16 +240,15 @@
             flash_ind=0,
             cur_slider=null;
 
-        function score(scor) {
+        function score(scor,cnt) {
             score_popup.src='/static/score/'+scor+'.png';
             score_popup.className='';
             setTimeout(function() {
                 score_popup.className='hidden';
             },100);
-            if(score_history[scor])
-                score_history[scor]++;
-            else
-                score_history[scor]=1;
+            if(score_history[scor]===undefined)
+                score_history[scor]=0;
+            score_history[scor]+=cnt?cnt:1;
         }
         function judge_score(scor) {
             scor=Math.abs(scor);
@@ -247,7 +292,7 @@
                     delete hitobj_nodes[cur_ind];
                     window.state='idle';
                     window.cur_ind++;
-                    score('miss');
+                    score('miss',curobj.type==='slider'?2:1);
                     return;
                 }
                 if(curobj.type==='slider') {
@@ -333,10 +378,7 @@
                 if(Math.round(player.duration*1000)-10>time) //still have time to go
                     return requestAnimationFrame(tick);
                 else {
-                    msg('Well done');
-                    setTimeout(function() {
-                        location.href='/result?mapid='+${mapid|u}+'&rep='+encodeURIComponent(JSON.stringify(score_history));
-                    },1000);
+                    location.href='/result?mapid=${mapid|u}&rep='+encodeURIComponent(btoa(JSON.stringify(score_history)));
                     return;
                 }
             }
@@ -365,7 +407,7 @@
                     delete hitobj_nodes[cur_ind];
                     window.state='idle';
                     window.cur_ind++;
-                    score('miss');
+                    score('miss',curobj.type==='slider'?2:1);
                     return tick();
                 }
             } else if(state==='spinner') {
@@ -397,12 +439,12 @@
                 obj_dom.style.backgroundColor='rgb('+COLORS[window.incoming_color_ind]+')';
                 if(nxtobj.type==='circle') {
                     obj_dom.style.height=CIRCLE_HEIGHT+'px';
-                    obj_dom.style.left=(${BORDER_WIDTH}+incoming_pos*${(100-CIRCLE_WIDTH-2*BORDER_WIDTH)/2})+'%';
+                    obj_dom.style.left=(${BORDER_WIDTH}+incoming_pos*${100-CIRCLE_WIDTH-2*BORDER_WIDTH})+'%';
                 }
                 else if(nxtobj.type==='slider' || nxtobj.type==='spinner') {
                     obj_dom.style.height=((nxtobj.stop_time-nxtobj.time)*FALL_SPEED)+'px';
                     if(nxtobj.type==='slider')
-                        obj_dom.style.left=(${BORDER_WIDTH+(CIRCLE_WIDTH-SLIDER_WIDTH)/2}+incoming_pos*${(100-CIRCLE_WIDTH-2*BORDER_WIDTH)/2})+'%';
+                        obj_dom.style.left=(${BORDER_WIDTH+(CIRCLE_WIDTH-SLIDER_WIDTH)/2}+incoming_pos*${100-CIRCLE_WIDTH-2*BORDER_WIDTH})+'%';
                     obj_dom.dataset.stop_time=nxtobj.stop_time;
                 }
                 else
@@ -440,6 +482,14 @@
         hitobjs.push({time: 2147483647, type:'stop'});
         hitobjs[0].newcombo=true;
         requestAnimationFrame(tick);
+        player.addEventListener('timeupdate',function() {
+            var prog=player.currentTime/player.duration;
+            if(prog>.5) {
+                progress1.style.transform='rotate(.5turn)';
+                progress2.style.transform='rotate('+(prog -.5)+'turn)';
+            } else
+                progress1.style.transform='rotate('+prog+'turn)';
+        });
         addEventListener('keydown',start);
 
         [ //cache resources

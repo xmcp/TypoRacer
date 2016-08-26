@@ -10,6 +10,7 @@ import requests
 import io
 import re
 import json
+import base64
 
 osu_url_re=re.compile(r'^(?:https?://)?osu\.ppy\.sh/[sd]/(\d+)n?$')
 
@@ -51,11 +52,13 @@ class Website:
 
     @cherrypy.expose()
     def result(self,mapid,rep):
-        rep=json.loads(rep)
+        mapid=int(mapid)
+        rep=json.loads(base64.b64decode(rep.encode()).decode())
         scorepage=Template(filename='result.html',input_encoding='utf-8',output_encoding='utf-8')
         return scorepage.render(
-            bg_url='/bg_img/%d'%int(mapid),
+            bg_url='/bg_img/%d'%mapid,
             rep=rep,
+            title='%s (%s)'%(self.maps[mapid]['title'],self.maps[mapid]['version'])
         )
         
     @cherrypy.expose()
@@ -100,7 +103,7 @@ class Website:
                     bg_fn=unquote(splited[2])
                     break
             else:
-                raise AssertionFailed('no background image')
+                raise AssertionError('no background image')
             if 'Colours' in parser.sections():
                 colors=[list(map(int,line.partition(':')[2].strip().split(','))) for line in parser.options('Colours') if line]
             else:

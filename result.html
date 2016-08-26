@@ -5,59 +5,92 @@
   <title>TypoRacer</title>
   
   <style>
-        #bg-image {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            opacity: .6;
-        }
-        #result-panel {
-            position: absolute;
-            width: 300px;
-            background-color: rgba(255,255,255,.75);
-            border-radius:10px;
-            left: 0;
-            right: 0;
-            margin: auto;
-            text-align: center;
-        }
-        #result-panel>.detail {
-            left: 0;
-            right: 0;
-            margin: auto;
-            width: 200px;
-        }
-        #result-panel>.detail>img {
-            float: left;
-            height: 50px;
-        }
-        #result-panel>.detail>span {
-            font-family: Consolas, monospace;
-            font-size: 40px;
-            line-height: 50px;
-        }
+      body {
+          font-family: 'Segoe UI', '微软雅黑', 'Microsoft Yahei', serif;
+          background-color: #aaa;
+      }
+      h1 {
+          font-weight: normal;
+          font-size: 40px;
+          margin: .3em 0 0 0;
+      }
+      #bg-image {
+          position: fixed;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background-size: cover;
+          opacity: .75;
+      }
+      #title-bar {
+          position: fixed;
+          left: 20px;
+          top: 10px;
+          font-size: 25px;
+          color: white;
+          text-shadow: 0 0 5px black;
+      }
+      #title-bar a {
+          text-decoration: none !important;
+          color: white !important;
+      }
+      #result-panel {
+          position: absolute;
+          width: 400px;
+          height: 475px;
+          background-color: rgba(255,255,255,.75);
+          border-radius:10px;
+          left: 0;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          margin: auto;
+          text-align: center;
+      }
+      #result-panel>.detail {
+          left: 0;
+          right: 0;
+          margin: auto;
+          width: 200px;
+          padding-top: 5px;
+      }
+      #result-panel>.detail>div {
+          float: left;
+          height: 50px;
+          width: 100px;
+          filter: brightness(120%) drop-shadow(0 0 2px black);
+      }
+      #result-panel>.detail>div>img {
+          height: 50px;
+      }
+      #result-panel>.detail>span {
+          font-size: 35px;
+          line-height: 50px;
+      }
   </style>
   
 </head>
 <body>
 
     <%
-        accu=((rep['max']+rep['300'])*30+rep['200']*20+rep['100']*10+rep['50']*5)\
-            /30/(rep['max']+rep['300']+rep['200']+rep['100']+rep['50']+rep['miss'])
+        try:
+            accu=((rep['max']+rep['300'])*30+rep['200']*20+rep['100']*10+rep['50']*5)\
+                /30/(rep['max']+rep['300']+rep['200']+rep['100']+rep['50']+rep['miss'])
+        except ZeroDivisionError:
+            accu=None
     %>
+
     <div id="bg-image" style="background-image: url(${bg_url})"></div>
+    <div id="title-bar"><a href="/" target="_self">&lt;返回主页 &nbsp; ${title|h}</a></div>
     <div id="result-panel">
-        <h1>Accuracy: ${'%.2f'%(accu*100)}%</h1>
-        <br>
-        <div class="detail"><img src="/static/score/max.png"><span>x${rep['max']|h}</span></div>
-        <div class="detail"><img src="/static/score/300.png"><span>x${rep['300']|h}</span></div>
-        <div class="detail"><img src="/static/score/200.png"><span>x${rep['200']|h}</span></div>
-        <div class="detail"><img src="/static/score/100.png"><span>x${rep['100']|h}</span></div>
-        <div class="detail"><img src="/static/score/50.png"><span>x${rep['50']|h}</span></div>
-        <div class="detail"><img src="/static/score/miss.png"><span>x${rep['miss']|h}</span></div>
+        <h1>准确度 ${'%.2f'%(accu*100) if accu is not None else '--'}%</h1>
+        %for scor in ['max','300','200','100','50','clear','miss']:
+            <div class="detail">
+                <div><img src="/static/score/${scor|u}.png"></div>
+                <span>x${rep[scor]|h}</span>
+            </div>
+        %endfor
     </div>
 
 </body>
