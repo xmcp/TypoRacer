@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>TypoRacer</title>
+  
+  <style>
+        #bg-image {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            opacity: .6;
+        }
+        #result-panel {
+            position: absolute;
+            width: 300px;
+            background-color: rgba(255,255,255,.75);
+            border-radius:10px;
+            left: 0;
+            right: 0;
+            margin: auto;
+            text-align: center;
+        }
+        #result-panel>.detail {
+            left: 0;
+            right: 0;
+            margin: auto;
+            width: 200px;
+        }
+        #result-panel>.detail>img {
+            float: left;
+            height: 50px;
+        }
+        #result-panel>.detail>span {
+            font-family: Consolas, monospace;
+            font-size: 40px;
+            line-height: 50px;
+        }
+  </style>
+  
+</head>
+<body>
+
+    <%
+        accu=((rep['max']+rep['300'])*30+rep['200']*20+rep['100']*10+rep['50']*5)\
+            /30/(rep['max']+rep['300']+rep['200']+rep['100']+rep['50']+rep['miss'])
+    %>
+    <div id="bg-image" style="background-image: url(${bg_url})"></div>
+    <div id="result-panel">
+        <h1>Accuracy: ${'%.2f'%(accu*100)}%</h1>
+        <br>
+        <div class="detail"><img src="/static/score/max.png"><span>x${rep['max']|h}</span></div>
+        <div class="detail"><img src="/static/score/300.png"><span>x${rep['300']|h}</span></div>
+        <div class="detail"><img src="/static/score/200.png"><span>x${rep['200']|h}</span></div>
+        <div class="detail"><img src="/static/score/100.png"><span>x${rep['100']|h}</span></div>
+        <div class="detail"><img src="/static/score/50.png"><span>x${rep['50']|h}</span></div>
+        <div class="detail"><img src="/static/score/miss.png"><span>x${rep['miss']|h}</span></div>
+    </div>
+
+</body>
+</html>

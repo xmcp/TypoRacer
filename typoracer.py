@@ -9,6 +9,7 @@ import mimetypes
 import requests
 import io
 import re
+import json
 
 osu_url_re=re.compile(r'^(?:https?://)?osu\.ppy\.sh/[sd]/(\d+)n?$')
 
@@ -45,8 +46,18 @@ class Website:
             beatmap=beatmap['beatmap'],
             bg_url='/bg_img/%d'%mapid,
             colors=beatmap['colors'],
+            mapid=mapid,
         )
 
+    @cherrypy.expose()
+    def result(self,mapid,rep):
+        rep=json.loads(rep)
+        scorepage=Template(filename='result.html',input_encoding='utf-8',output_encoding='utf-8')
+        return scorepage.render(
+            bg_url='/bg_img/%d'%int(mapid),
+            rep=rep,
+        )
+        
     @cherrypy.expose()
     def song(self,songid):
         cherrypy.response.headers['Content-Type']=self.songs[int(songid)]['type']

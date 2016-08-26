@@ -185,10 +185,11 @@
             hitobjs=[],
             hitobj_nodes={},
             flashtime=[],
+            score_history={'max':0,'300':0,'200':0,'100':0,'50':0,'miss':0},
             state='idle',
             incoming_pos=null,
             incoming_color_ind=-1,
-            cur_ind= 0,
+            cur_ind=0,
             incoming_ind=0,
             flash_ind=0,
             cur_slider=null;
@@ -199,6 +200,10 @@
             setTimeout(function() {
                 score_popup.className='hidden';
             },100);
+            if(score_history[scor])
+                score_history[scor]++;
+            else
+                score_history[scor]=1;
         }
         function judge_score(scor) {
             scor=Math.abs(scor);
@@ -330,7 +335,7 @@
                 else {
                     msg('Well done');
                     setTimeout(function() {
-                        location.href='/';
+                        location.href='/result?mapid='+${mapid|u}+'&rep='+encodeURIComponent(JSON.stringify(score_history));
                     },1000);
                     return;
                 }
