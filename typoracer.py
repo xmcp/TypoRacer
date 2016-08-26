@@ -22,6 +22,7 @@ class Website:
     maps={}
     songs={}
     ind=0
+    unknown_id=1
 
     def __init__(self):
         try:
@@ -76,27 +77,41 @@ class Website:
         get_opt=lambda *_:beatmap_parser.get_opt(parser,*_)
         def unquote(x):
             return x[1:-1] if x[0]=='"' and x[-1]=='"' else x
-
+        def case_insensitive_open(fn):
+            return zipf.open(name_dict[fn.lower()])
+        
+        self.unknown_id+=1
         zipf=zipfile.ZipFile(file.file)
+        name_dict={fn.lower():fn for fn in zipf.namelist()}
         audio_fn=None
         songid=None
-        for beatmap_fn in filter(lambda fn:fn.endswith('.osu'),zipf.namelist()):
+        for beatmap_fn in filter(lambda fn:fn.endswith('.osu'),name_dict.values()):
             beatmap_str=zipf.open(beatmap_fn).read().decode('utf-8','ignore').partition('\n')[2]
-            parser=configparser.ConfigParser(allow_no_value=True,delimiters=['\n'],comment_prefixes=['//'])
+            parser=configparser.ConfigParser(allow_no_value=True,delimiters=['\n'],comment_prefixes=['//'],strict=False)
             parser.optionxform=str # stop auto lowering key name
             parser.read_string(beatmap_str)
             if audio_fn is not None:
                 assert audio_fn==get_opt('General','AudioFilename'), 'different audio filename in one map set'
             else:
                 audio_fn=get_opt('General','AudioFilename')
-            title=get_opt('Metadata','TitleUnicode')
+            try:
+                title=get_opt('Metadata','TitleUnicode')
+            except AssertionError:
+                title=get_opt('Metadata','Title')
             author=get_opt('Metadata','Creator')
             version=get_opt('Metadata','Version')
-            mapid=int(get_opt('Metadata','BeatmapID'))
+            try:
+                mapid=int(get_opt('Metadata','BeatmapID'))
+            except AssertionError:
+                mapid=-self.ind
             if songid is not None:
-                assert songid==int(get_opt('Metadata','BeatmapSetID')), 'different setid in one map set'
+                if songid>=0:
+                    assert songid==int(get_opt('Metadata','BeatmapSetID')), 'different setid in one map set'
             else:
-                songid=int(get_opt('Metadata','BeatmapSetID'))
+                try:
+                    songid=int(get_opt('Metadata','BeatmapSetID'))
+                except AssertionError:
+                    songid=-self.unknown_id
             for line in parser.options('Events'):
                 splited=line.split(',')
                 if splited[0]!='Video':
@@ -116,7 +131,7 @@ class Website:
                 'author':author,
                 'version':version,
                 'beatmap':beatmap_parser.parse(beatmap_str),
-                'background':zipf.open(bg_fn).read(),
+                'background':case_insensitive_open(bg_fn).read(),
                 'ind':self.ind,
                 'colors':colors,
             }
@@ -125,7 +140,7 @@ class Website:
         assert audio_fn is not None and songid is not None, 'no audio file or set id found'
         self.songs[songid]={
             'type':mimetypes.guess_type(audio_fn)[0],
-            'content':zipf.open(audio_fn).read(),
+            'content':case_insensitive_open(audio_fn).read(),
         }
 
         raise cherrypy.HTTPRedirect('/')

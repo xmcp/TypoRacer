@@ -7,7 +7,7 @@ def get_opt(parser,section,option):
         k,_,v=line.partition(':')
         if k.strip()==option:
             return v.strip()
-    raise AssertionError('bad beatmap file')
+    raise AssertionError('option not found')
 
 def _parse_bpm(lines):
     bpm=list(map(lambda splited:[int(splited[0]),float(splited[1]),int(splited[6])],sorted(
@@ -71,7 +71,7 @@ def _parse_hit_objs(lines,bpms,slider_speed):
 
 
 def parse(content):
-    parser=configparser.ConfigParser(allow_no_value=True,delimiters=['\n'],comment_prefixes=['//'])
+    parser=configparser.ConfigParser(allow_no_value=True,delimiters=['\n'],comment_prefixes=['//'],strict=False)
     parser.optionxform=str # stop auto lowering key name
     parser.read_string(content.partition('\n')[2])
     slider_speed=float(get_opt(parser,'Difficulty','SliderMultiplier'))*100
