@@ -1,48 +1,143 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <title>TypoRacer</title>
+    <meta charset="UTF-8">
+    <title>TypoRacer</title>
+
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: 'Segoe UI', '微软雅黑', 'Microsoft Yahei', serif;
+        }
+        a {
+            text-decoration: none;
+            color: inherit !important;
+        }
+        #bg-image {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            opacity: .6;
+        }
+        #map-list {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 400px;
+            height: 100%;
+            overflow-y: auto;
+            background-color: rgba(255,255,255,.3);
+        }
+        #map-list>h1, #import-box>h1 {
+            padding-left: 25px;
+        }
+        .map-item {
+            cursor: pointer;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            padding-left: 15px;
+        }
+        .start-btn {
+            float: right;
+            padding: 5px;
+            margin: 10px 10px 0 0;
+            border: 1px solid white;
+            border-radius: 5px;
+            visibility: hidden;
+        }
+        .start-btn:hover {
+            background-color: #888;
+        }
+        .selected .start-btn {
+            visibility: visible !important;
+        }
+        #import-box {
+            position: fixed;
+            top: 0;
+            left: 400px;
+            width: calc(100% - 400px);
+            height: 100%;
+        }
+        #import-box>form {
+            padding-left: 15px;
+        }
+        #import-box>h2 {
+            font-size: 1.2em;
+            padding-left: 25px;
+        }
+
+        /* http://www.colorzilla.com/gradient-editor/ */
+        .map-item:not(.selected) {
+            background: #222244;
+            background: linear-gradient(to right, rgba(34,34,68,.6) 0%, rgba(34,68,119,.6) 100%);
+        }
+        .map-item.selected {
+            background: #112288;
+            background: linear-gradient(to right, rgba(17,34,136,.8) 0%, rgba(85,136,153,.8) 100%);
+        }
+        .map-item>h1 {
+            font-size: 1.5em;
+            margin: 0;
+            font-weight: normal;
+        }
+        .map-item>p {
+            margin: 0;
+        }
+    </style>
+
 </head>
 <body>
 
-    <table border="1">
-        <thead>
-            <tr>
-                <th>谱面编号</th>
-                <th>标题</th>
-                <th>作者</th>
-                <th>难度</th>
-            </tr>
-        </thead>
-        <tbody>
-            %for map in maps:
-                <tr>
-                    <td><a href="/game/${map['mapid']|u}" target="_self">进入${map['mapid']|h}</a></td>
-                    <td>${map['title']}</td>
-                    <td>${map['author']|h}</td>
-                    <td>${map['version']|h}</td>
-                </tr>
-            %endfor
-        </tbody>
-    </table>
+    <div id="bg-image"></div>
 
-    <br>
+    <div id="map-list">
+        <h1>歌曲列表</h1>
+        %for map in maps:
+            <div class="map-item" id="map-item-${map['mapid']}" onclick="preview(${map['mapid']})">
+                <a class="start-btn" href="/game/${map['mapid']}">开始游戏</a>
+                <h1>${map['title']}</h1>
+                <p><b>${map['version']|h}</b> - by ${map['author']|h}</p>
+            </div>
+        %endfor
+    </div>
 
-    <form method="post" action="/load" enctype="multipart/form-data">
-        <input name="file" type="file" required>
-        <button type="submit">导入 .osz 谱面</button>
-    </form>
+    <div id="import-box">
+        <h1>导入谱面</h1>
+        <h2>从文件导入</h2>
+        <form method="post" action="/load" enctype="multipart/form-data">
+            <input name="file" type="file" required>
+            <button type="submit">导入 .osz 谱面</button>
+        </form>
+        <br>
+        <h2>云导入</h2>
+        <form method="post" action="/peppy">
+            <input name="peppy_id" type="text" placeholder="谱面编号或下载页网址" required>
+            <input name="username" type="text" placeholder="用户名" required>
+            <input name="password" type="password" placeholder="密码" required>
+            <button type="submit">云导入</button>
+            <p>我们不会收集您的密码。</p>
+            <p>osu 的谱面下载页要求登录，所以“云导入”需要您提供 osu 账号信息。</p>
+            <p>您也可以自己下载 .osz 谱面，然后选择从文件导入。</p>
+        </form>
+    </div>
 
-    <br>
-
-    <form method="post" action="/peppy">
-        <input name="peppy_id" type="text" placeholder="谱面编号或下载页网址" required>
-        <input name="username" type="text" placeholder="用户名" required>
-        <input name="password" type="password" placeholder="密码" required>
-        <button type="submit">云导入</button>
-        <p>我们不会收集您的密码。osu 的谱面下载页要求登录，所以“云导入”需要您提供 osu 账号信息。您也可以自己下载 .osz 谱面，然后手动上传。</p>
-    </form>
+    <script>
+        var cur_dom=null,
+            cur_mapid=null,
+            bg_img=document.getElementById('bg-image');
+        function preview(mapid) {
+            window.cur_mapid=mapid;
+            if(cur_dom!==null)
+                cur_dom.className='map-item';
+            window.cur_dom=document.getElementById('map-item-'+mapid);
+            cur_dom.className='map-item selected';
+            bg_img.style.backgroundImage='url(/bg_img/'+mapid+')';
+        }
+    </script>
 
 </body>
 </html>
