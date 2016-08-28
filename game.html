@@ -407,7 +407,7 @@
                 else if(curobj.type==='spinner') {
                     if(curobj.time<=time) {
                         curobj.count=0;
-                        curobj.clear_count=Math.round((curobj.stop_time-curobj.time)/MS_PER_SPINNER_TYPE);
+                        curobj.clear_count=Math.max(1,Math.round((curobj.stop_time-curobj.time)/MS_PER_SPINNER_TYPE)-2);
                         window.state='spinner';
                         score('spin');
                     }
@@ -526,7 +526,7 @@
             '/static/score/spin.png',
             '/static/score/clear.png'
         ].forEach(function(fn) {
-            new Image(fn);
+            new Image().src=fn;
         })
     </script>
 

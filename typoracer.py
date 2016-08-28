@@ -32,7 +32,7 @@ class Website:
     unknown_id=1
 
     def __init__(self):
-        for filename in os.listdir('default_map'):
+        for filename in sorted(os.listdir('default_map')):
             try:
                 self.load(FakeFile(open('default_map/'+filename,'rb').read()))
             except cherrypy.HTTPRedirect:
@@ -54,7 +54,7 @@ class Website:
             title='%s (%s)'%(beatmap['title'],beatmap['version']),
             audio_url='/song/%d'%beatmap['songid'],
             beatmap=beatmap['beatmap'],
-            bg_url='/bg_img/%d'%mapid,
+            bg_url='/img_cache/%s'%beatmap['background'],
             colors=beatmap['colors'],
             mapid=mapid,
         )
@@ -65,7 +65,7 @@ class Website:
         rep=json.loads(base64.b64decode(rep.encode()).decode())
         scorepage=Template(filename='result.html',input_encoding='utf-8',output_encoding='utf-8')
         return scorepage.render(
-            bg_url='/bg_img/%d'%mapid,
+            bg_url='/img_cache/%s'%self.maps[int(mapid)]['background'],
             rep=rep,
             title='%s (%s)'%(self.maps[mapid]['title'],self.maps[mapid]['version'])
         )
@@ -74,11 +74,6 @@ class Website:
     def song(self,songid):
         cherrypy.response.headers['Content-Type']=self.songs[int(songid)]['type']
         return self.songs[int(songid)]['content']
-
-    @cherrypy.expose()
-    def bg_img(self,mapid):
-        cherrypy.response.headers.pop('Content-Type',None)
-        raise cherrypy.HTTPRedirect('/img_cache/%s'%self.maps[int(mapid)]['background'])
 
     @cherrypy.expose()
     def img_cache(self,md5):
@@ -166,15 +161,19 @@ class Website:
     def peppy(self,peppy_id,username,password):
         mat=osu_url_re.match(peppy_id)
         peppy_id=int(mat.groups()[0] if mat else peppy_id)
+
         s=requests.Session()
+        # login
         s.post('https://osu.ppy.sh/forum/ucp.php?mode=login',data={
             'username':username,
             'password':password,
             'login':'Login'}
         ).raise_for_status()
+        # download
         res=s.get('https://osu.ppy.sh/d/%dn'%peppy_id,verify=False)
         res.raise_for_status()
         assert not res.headers.get('Content-Type','').startswith('text/')
+        # load
         self.load(FakeFile(res.content))
 
 

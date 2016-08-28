@@ -13,6 +13,13 @@
         a {
             color: inherit !important;
         }
+        code {
+            font-family: consolas, monospace;
+            background-color: rgba(0,0,0,.3);
+            border: 1px solid white;
+            border-radius: 5px;
+            padding: 0 3px 0 3px;
+        }
         #bg-image {
             position: fixed;
             left: 0;
@@ -30,6 +37,19 @@
             height: 100%;
             overflow-y: auto;
             background-color: rgba(255,255,255,.3);
+        }
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background-color: rgba(255,255,255,.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(85,85,85,.6);
+        }
+        ::-webkit-scrollbar-thumb:active {
+            background-color: rgba(85,85,85,1);
         }
         #map-list>h1, #import-box>h1 {
             padding-left: 25px;
@@ -65,6 +85,7 @@
             width: calc(100% - 400px);
             height: 100%;
             overflow: auto;
+            text-shadow: 0 0 5px black;
         }
         #import-box>form, #import-box>p {
             padding-left: 25px;
@@ -102,11 +123,12 @@
     <div id="map-list">
         <h1>歌曲列表</h1>
         %for map in maps:
-            <div class="map-item" id="map-item-${map['mapid']}" onmouseover="preview(${map['mapid']})">
+            <div class="map-item" id="map-item-${map['mapid']}" onmouseover="preview(${map['mapid']})" data-imghash="${map['background']}">
                 <a class="start-btn" href="/game/${map['mapid']}">开始游戏</a>
                 <h1>${map['title']}</h1>
                 <p><b>${map['version']|h}</b> - by ${map['author']|h}</p>
             </div>
+            <link rel="prefetch" href="/img_cache/${map['background']}">
         %endfor
     </div>
 
@@ -118,23 +140,34 @@
             <button type="submit">导入 .osz 曲包</button>
             <p>按照 osu 的建议，曲包中的所有谱面必须有至少一张背景图片，且必须共用一首音乐。</p>
         </form>
-        <h2>云导入</h2>
+        <h2>云导入 &nbsp; <small>(<a href="http://osu.ppy.sh/p/beatmaplist" target="_blank">osu.ppy.sh/p/beatmaplist</a></small>)</h2>
         <form method="post" action="/peppy">
-            <input name="peppy_id" type="text" placeholder="谱面编号或下载页网址" required>
+            <input name="peppy_id" type="text" placeholder="曲包编号或下载页网址" required>
             <input name="username" type="text" placeholder="用户名" required>
             <input name="password" type="password" placeholder="密码" required>
             <button type="submit">云导入</button>
-            <p>我们不会收集您的密码。</p>
-            <p>osu 的谱面下载页要求登录，所以“云导入”需要您提供 osu 账号信息。</p>
-            <p>您也可以自己下载 .osz 谱面，然后选择从文件导入。</p>
+            <p>我们不会收集或记录您的密码，您的密码只会被发送到 https://osu.ppy.sh 用于曲包下载。</p>
+            <p>osu 的谱面下载页要求登录，所以“云导入”功能需要使用您的 osu 账号信息。</p>
+            <p>
+                “云导入”的相关代码是 <code>typoracer.py</code> 中 <code>Website</code> 类的 <code>peppy</code> 方法，
+                已公布于 <a href="https://github.com/xmcp/TypoRacer/blob/master/typoracer.py" target="_blank">GitHub</a>。
+            </p>
+            <p>如果您担心账号被盗，也可以自己下载 .osz 曲包，然后选择从文件导入。</p>
         </form>
         <h2>关于</h2>
-        <p>我们不生产谱面，我们只是 osu 的搬运工</p>
-        <p><a href="https://github.com/xmcp/typoracer" target="_blank">TypoRacer by @xmcp</a></p>
-        <p>该名称 neta 于某<b> 特/别/帅 </b>的计算机集训队教练引以为傲的网站 <a href="http://www.typeracer.com/" target="_blank">TypeRacer</a></p>
+        <p>（除了两个教学关以外，）我们不生产谱面，我们只是 osu 的搬运工</p>
+        <p>
+            <a href="https://github.com/xmcp/typoracer" target="_blank">TypoRacer by @xmcp</a>，
+            该名称 neta 自一个<b>特别帅</b>的集训队教练引以为傲的网站 <a href="http://www.typeracer.com/" target="_blank">TypeRacer</a>
+        </p>
     </div>
 
     <script>
+        if(navigator.appName==='Microsoft Internet Explorer')
+            alert('你正在使用 IE 浏览器访问本网站，这是不对的。');
+        else if(navigator.userAgent.indexOf('Firefox')!==-1)
+            alert('部分 Firefox 用户在游戏过程中可能遇到频繁掉帧的问题，建议使用 Chrome 浏览器。');
+
         var cur_dom=null,
             bg_img=document.getElementById('bg-image');
         function preview(mapid) {
@@ -142,8 +175,11 @@
                 cur_dom.className='map-item';
             window.cur_dom=document.getElementById('map-item-'+mapid);
             cur_dom.className='map-item selected';
-            bg_img.style.backgroundImage='url(/bg_img/'+mapid+')';
+            bg_img.style.backgroundImage='url(/img_cache/'+cur_dom.dataset.imghash+')';
         }
+        %if maps:
+            preview(${maps[0]['mapid']});
+        %endif
     </script>
 
 </body>
