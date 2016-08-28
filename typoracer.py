@@ -11,12 +11,19 @@ import io
 import re
 import json
 import base64
+import hashlib
 
 osu_url_re=re.compile(r'^(?:https?://)?osu\.ppy\.sh/[sd]/(\d+)n?$')
 
 class FakeFile:
     def __init__(self,content):
         self.file=io.BytesIO(content)
+
+file_cache={}
+def cache_file(content):
+    md5=hashlib.new('md5',content).hexdigest()
+    file_cache[md5]=content
+    return md5
 
 class Website:
     maps={}
@@ -25,10 +32,11 @@ class Website:
     unknown_id=1
 
     def __init__(self):
-        try:
-            self.load(FakeFile(open('example.osz','rb').read()))
-        except cherrypy.HTTPRedirect:
-            pass
+        for filename in os.listdir('default_map'):
+            try:
+                self.load(FakeFile(open('default_map/'+filename,'rb').read()))
+            except cherrypy.HTTPRedirect:
+                pass
 
     @cherrypy.expose()
     def index(self):
@@ -70,7 +78,14 @@ class Website:
     @cherrypy.expose()
     def bg_img(self,mapid):
         cherrypy.response.headers.pop('Content-Type',None)
-        return self.maps[int(mapid)]['background']
+        raise cherrypy.HTTPRedirect('/img_cache/%s'%self.maps[int(mapid)]['background'])
+
+    @cherrypy.expose()
+    def img_cache(self,md5):
+        if md5 in file_cache:
+            return file_cache[md5]
+        else:
+            raise cherrypy.NotFound()
 
     @cherrypy.expose()
     def load(self,file):
@@ -102,14 +117,16 @@ class Website:
             version=get_opt('Metadata','Version')
             try:
                 mapid=int(get_opt('Metadata','BeatmapID'))
+                assert mapid>0
             except AssertionError:
                 mapid=-self.ind
             if songid is not None:
-                if songid>=0:
+                if songid>0:
                     assert songid==int(get_opt('Metadata','BeatmapSetID')), 'different setid in one map set'
             else:
                 try:
                     songid=int(get_opt('Metadata','BeatmapSetID'))
+                    assert songid>0
                 except AssertionError:
                     songid=-self.unknown_id
             for line in parser.options('Events'):
@@ -131,7 +148,7 @@ class Website:
                 'author':author,
                 'version':version,
                 'beatmap':beatmap_parser.parse(beatmap_str),
-                'background':case_insensitive_open(bg_fn).read(),
+                'background':cache_file(case_insensitive_open(bg_fn).read()),
                 'ind':self.ind,
                 'colors':colors,
             }
@@ -179,4 +196,9 @@ cherrypy.quickstart(Website(),'/',{
             ('Cache-Control','max-age=86400'),
         ],
     },
+    '/img_cache': {
+        'tools.response_headers.headers': [
+            ('Cache-Control','max-age=86400'),
+        ],
+    }
 })

@@ -11,7 +11,6 @@
             font-family: 'Segoe UI', '微软雅黑', 'Microsoft Yahei', serif;
         }
         a {
-            text-decoration: none;
             color: inherit !important;
         }
         #bg-image {
@@ -36,18 +35,22 @@
             padding-left: 25px;
         }
         .map-item {
-            cursor: pointer;
             padding-top: 5px;
             padding-bottom: 5px;
             padding-left: 15px;
+            transition: box-shadow 500ms ease;
+        }
+        .map-item>p {
+            padding-left: 10px;
         }
         .start-btn {
             float: right;
             padding: 5px;
-            margin: 10px 10px 0 0;
+            margin: 8px 10px 0 0;
             border: 1px solid white;
             border-radius: 5px;
             visibility: hidden;
+            text-decoration: none;;
         }
         .start-btn:hover {
             background-color: #888;
@@ -61,13 +64,14 @@
             left: 400px;
             width: calc(100% - 400px);
             height: 100%;
+            overflow: auto;
         }
-        #import-box>form {
-            padding-left: 15px;
+        #import-box>form, #import-box>p {
+            padding-left: 25px;
         }
         #import-box>h2 {
             font-size: 1.2em;
-            padding-left: 25px;
+            padding-left: 15px;
         }
 
         /* http://www.colorzilla.com/gradient-editor/ */
@@ -77,10 +81,11 @@
         }
         .map-item.selected {
             background: #112288;
-            background: linear-gradient(to right, rgba(17,34,136,.8) 0%, rgba(85,136,153,.8) 100%);
+            background: linear-gradient(to right, rgba(34, 68, 136, 0.8) 0%, rgba(85,136,153,.8) 100%);
+            box-shadow: 0px 2px 25px black
         }
         .map-item>h1 {
-            font-size: 1.5em;
+            font-size: 1.2em;
             margin: 0;
             font-weight: normal;
         }
@@ -97,7 +102,7 @@
     <div id="map-list">
         <h1>歌曲列表</h1>
         %for map in maps:
-            <div class="map-item" id="map-item-${map['mapid']}" onclick="preview(${map['mapid']})">
+            <div class="map-item" id="map-item-${map['mapid']}" onmouseover="preview(${map['mapid']})">
                 <a class="start-btn" href="/game/${map['mapid']}">开始游戏</a>
                 <h1>${map['title']}</h1>
                 <p><b>${map['version']|h}</b> - by ${map['author']|h}</p>
@@ -110,9 +115,9 @@
         <h2>从文件导入</h2>
         <form method="post" action="/load" enctype="multipart/form-data">
             <input name="file" type="file" required>
-            <button type="submit">导入 .osz 谱面</button>
+            <button type="submit">导入 .osz 曲包</button>
+            <p>按照 osu 的建议，曲包中的所有谱面必须有至少一张背景图片，且必须共用一首音乐。</p>
         </form>
-        <br>
         <h2>云导入</h2>
         <form method="post" action="/peppy">
             <input name="peppy_id" type="text" placeholder="谱面编号或下载页网址" required>
@@ -123,14 +128,16 @@
             <p>osu 的谱面下载页要求登录，所以“云导入”需要您提供 osu 账号信息。</p>
             <p>您也可以自己下载 .osz 谱面，然后选择从文件导入。</p>
         </form>
+        <h2>关于</h2>
+        <p>我们不生产谱面，我们只是 osu 的搬运工</p>
+        <p><a href="https://github.com/xmcp/typoracer" target="_blank">TypoRacer by @xmcp</a></p>
+        <p>该名称 neta 于某<b> 特/别/帅 </b>的计算机集训队教练引以为傲的网站 <a href="http://www.typeracer.com/" target="_blank">TypeRacer</a></p>
     </div>
 
     <script>
         var cur_dom=null,
-            cur_mapid=null,
             bg_img=document.getElementById('bg-image');
         function preview(mapid) {
-            window.cur_mapid=mapid;
             if(cur_dom!==null)
                 cur_dom.className='map-item';
             window.cur_dom=document.getElementById('map-item-'+mapid);

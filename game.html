@@ -92,7 +92,7 @@
             position:fixed;
             width:100%;
             font-size: 30px;
-            font-family: consolas, monospace;
+            font-family: consolas, '微软雅黑', 'Microsoft Yahei', monospace;
             left: 0;
             bottom: ${HOLDER_BOTTOM+100}px;
             text-align:center;
@@ -231,6 +231,7 @@
             hitobjs=[],
             hitobj_nodes={},
             flashtime=[],
+            tips=[],
             score_history={'max':0,'300':0,'200':0,'100':0,'50':0,'miss':0,'clear':0},
             state='idle',
             incoming_pos=null,
@@ -260,7 +261,7 @@
             else return 'miss';
         }
 
-        function msg(txt) {
+        function msg(txt,timeout) {
             var msg_popup=document.createElement('div');
             msg_popup.className='msg-popup';
             msg_popup.textContent=txt;
@@ -274,7 +275,7 @@
                         msgs.removeChild(msg_popup);
                     } catch(_) {}
                 },550);
-            },100);
+            },timeout===undefined?100:timeout);
         }
 
         function keydown_callback(event) {
@@ -285,7 +286,7 @@
                 var curobj=hitobjs[cur_ind],
                     curnod=hitobj_nodes[cur_ind],
                     time_delta=time-curobj.time;
-                if(curobj.type==='stop' || curobj.type==='spinner')
+                if(curobj.type==='stop' || curobj.type==='spinner' || curobj.type==='text')
                     return;
                 if(time_delta<-MISS_THRESHOLD) {
                     stage.removeChild(hitobj_nodes[cur_ind]);
@@ -373,6 +374,11 @@
             var time=player.currentTime*1000;
             var curobj=hitobjs[cur_ind];
 
+            // tips
+            if(tips.length && tips[0].time<=time) {
+                msg(tips.splice(0,1)[0].text,600)
+            }
+
             if(curobj.type==='stop') {
                 redraw_stage(time);
                 if(Math.round(player.duration*1000)-10>time) //still have time to go
@@ -392,7 +398,13 @@
 
             // state maintain
             if(state==='idle') {
-                if(curobj.type==='spinner') {
+                if(curobj.type==='text') {
+                    tips.push(curobj);
+                    console.log('loaded text: #'+cur_ind+' '+curobj.text);
+                    cur_ind++;
+                    return tick();
+                }
+                else if(curobj.type==='spinner') {
                     if(curobj.time<=time) {
                         curobj.count=0;
                         curobj.clear_count=Math.round((curobj.stop_time-curobj.time)/MS_PER_SPINNER_TYPE);
@@ -427,6 +439,11 @@
             // fixme: disclaimer: the last hit object MUST BE stop!
             if(incoming_ind<hitobjs.length-1 && hitobjs[incoming_ind].time-time<DRAW_CANVAS_THRESHOLD) {
                 var nxtobj=hitobjs[incoming_ind];
+                if(nxtobj.type==='text') {
+                    incoming_ind++;
+                    return tick();
+                }
+
                 var obj_dom=document.createElement('div');
                 obj_dom.dataset.time=nxtobj.time;
                 obj_dom.className='hit-obj hit-obj-'+nxtobj.type;
@@ -473,6 +490,8 @@
 
         window.hitobjs=JSON.parse(decodeURIComponent('${beatmap|u,fixspace}'));
         for(var i=0;i<hitobjs.length;i++) {
+            if(hitobjs[i].type==='text')
+                continue;
             flashtime.push(hitobjs[i].time-CLAP_TIME_DELTA);
             if(hitobjs[i].type==='slider') {
                 flashtime.push(hitobjs[i].stop_time-CLAP_TIME_DELTA);
@@ -480,7 +499,11 @@
         }
         window.flashtime=flashtime.sort(function(fuck,js){return fuck-js;});
         hitobjs.push({time: 2147483647, type:'stop'});
-        hitobjs[0].newcombo=true;
+        for(var ind=0;ind<hitobjs.length;ind++)
+            if(hitobjs[ind].type!=='text') {
+                hitobjs[ind].newcombo=true;
+                break;
+            }
         requestAnimationFrame(tick);
         player.addEventListener('timeupdate',function() {
             var prog=player.currentTime/player.duration;

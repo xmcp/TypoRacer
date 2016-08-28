@@ -66,6 +66,12 @@ def _parse_hit_objs(lines,bpms,slider_speed):
                 'stop_time': int(args[0]),
                 'newcombo': True,
             }
+        elif typ==-233: #text
+            yield {
+                'time': time,
+                'type': 'text',
+                'text': ','.join(args),
+            }
         else:
             raise AssertionError('bad hitobj type: %d'%typ)
 
