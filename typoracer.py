@@ -197,7 +197,7 @@ cherrypy.quickstart(Website(),'/',{
     },
     '/img_cache': {
         'tools.response_headers.headers': [
-            ('Cache-Control','max-age=86400'),
+            ('Cache-Control','max-age=8640000'),
         ],
     }
 })
