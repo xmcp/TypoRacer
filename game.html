@@ -538,10 +538,8 @@
                 download_progress.textContent='正在缓冲……';
             else {
                 var prog=player.buffered.end(0)/player.duration;
-                if(prog>=.999) {
+                if(prog>=.999)
                     download_progress.textContent='';
-                    clearInterval(download_prog_interval);
-                }
                 else
                     download_progress.textContent='下载 '+parseInt(prog*100)+'%';
             }
