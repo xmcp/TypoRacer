@@ -16,6 +16,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=no">
     <title>TypoRacer</title>
 
     <style>
@@ -92,7 +93,7 @@
             position:fixed;
             width:100%;
             font-size: 30px;
-            font-family: consolas, '微软雅黑', 'Microsoft Yahei', monospace;
+            font-family: consolas, courier, '微软雅黑', 'Microsoft Yahei', monospace;
             left: 0;
             bottom: ${HOLDER_BOTTOM+100}px;
             text-align:center;
@@ -230,7 +231,7 @@
             SLIDER_END_THRESHOLD=50,
             FALL_SPEED=.75,
             MS_PER_SPINNER_TYPE=50,
-            DRAW_CANVAS_THRESHOLD=(screen.height+100)/FALL_SPEED,
+            DRAW_CANVAS_THRESHOLD=2*(screen.height+100)/FALL_SPEED,
             CIRCLE_HEIGHT=${CIRCLE_HEIGHT},
             CIRCLE_SIZE=${CIRCLE_WIDTH},
             SLIDER_SIZE=${SLIDER_WIDTH},
@@ -496,11 +497,26 @@
             requestAnimationFrame(tick);
         }
 
+        function touchdown_callback(event) {
+            keydown_callback({
+                repeat: false,
+                keyCode: event.changedTouches[0].identifier
+            });
+        }
+        function touchup_callback(event) {
+            keyup_callback({
+                keyCode: event.changedTouches[0].identifier
+            });
+        }
+        
         function start() {
             document.body.className='game-started';
             removeEventListener('keydown',start);
+            removeEventListener('touchend',start);
             addEventListener('keydown',keydown_callback);
+            addEventListener('touchstart',touchdown_callback);
             addEventListener('keyup',keyup_callback);
+            addEventListener('touchend',touchup_callback);
             player.currentTime=0;
             player.volume=1;
             player.play();
@@ -545,11 +561,15 @@
             }
         });
         
+        document.addEventListener('touchmove',function(event) {
+            event.preventDefault();
+        },false); 
         player.volume=0;
         player.play();
         requestAnimationFrame(tick);
         addEventListener('keydown',start);
-
+        addEventListener('touchend',start);
+        
         [ //cache resources
             '/static/clap.wav',
             '/static/score/max.png',
