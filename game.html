@@ -153,6 +153,17 @@
             background-color: orangered !important;
         }
 
+        #download-progress {
+            position: fixed;
+            color: white;
+            top: 15px;
+            right: 60px;
+            z-index: 80;
+            font-family: 'Segoe UI', '微软雅黑', 'Microsoft Yahei', serif;
+            font-size: 15px;
+            opacity: .6;
+        }
+        
         /* pie chart: http://www.kylejlarson.com/blog/how-to-create-pie-charts-with-css3/ */
         .pie-container {
             position: fixed;
@@ -201,14 +212,16 @@
     <img id="score-popup" class="hidden" src="0">
     <div id="msgs"><div class="msg-popup">Press any key to start</div></div>
 
-    <div class="pie-container">
-         <div class="pie-bg"></div>
-         <div class="pie-hold"><div id="progress-pie-1" class="pie"></div></div>
-         <div class="pie-hold pie-hold-2"><div id="progress-pie-2" class="pie"></div></div>
+    <div id="badge">
+        <span id="download-progress">加载中……</span>
+        <div class="pie-container">
+             <div class="pie-bg"></div>
+             <div class="pie-hold"><div id="progress-pie-1" class="pie"></div></div>
+             <div class="pie-hold pie-hold-2"><div id="progress-pie-2" class="pie"></div></div>
+        </div>
     </div>
 
-
-    <audio src="${audio_url}" preload="auto" id="player"></audio>
+    <audio src="${audio_url}" preload="metadata" id="player"></audio>
 
     <script>
         var CLAP_TIME_DELTA=30,
@@ -228,6 +241,7 @@
             msgs=document.getElementById('msgs'),
             progress1=document.getElementById('progress-pie-1'),
             progress2=document.getElementById('progress-pie-2'),
+            download_progress=document.getElementById('download-progress');
             hitobjs=[],
             hitobj_nodes={},
             flashtime=[],
@@ -371,6 +385,9 @@
         }
 
         function tick() {
+            if(player.volume===0) // prefetching, not started
+                return requestAnimationFrame(tick);
+        
             var time=player.currentTime*1000;
             var curobj=hitobjs[cur_ind];
 
@@ -484,8 +501,19 @@
             removeEventListener('keydown',start);
             addEventListener('keydown',keydown_callback);
             addEventListener('keyup',keyup_callback);
+            player.currentTime=0;
+            player.volume=1;
             player.play();
             msg('Started');
+            
+            player.addEventListener('timeupdate',function() {
+                var prog=player.currentTime/player.duration;
+                if(prog>.5) {
+                    progress1.style.transform='rotate(.5turn)';
+                    progress2.style.transform='rotate('+(prog -.5)+'turn)';
+                } else
+                    progress1.style.transform='rotate('+prog+'turn)';
+            });
         }
 
         window.hitobjs=JSON.parse(decodeURIComponent('${beatmap|u,fixspace}'));
@@ -504,15 +532,24 @@
                 hitobjs[ind].newcombo=true;
                 break;
             }
-        requestAnimationFrame(tick);
-        player.addEventListener('timeupdate',function() {
-            var prog=player.currentTime/player.duration;
-            if(prog>.5) {
-                progress1.style.transform='rotate(.5turn)';
-                progress2.style.transform='rotate('+(prog -.5)+'turn)';
-            } else
-                progress1.style.transform='rotate('+prog+'turn)';
+        
+        player.addEventListener('progress',function() {
+            if(player.buffered.length===0)
+                download_progress.textContent='正在缓冲……';
+            else {
+                var prog=player.buffered.end(0)/player.duration;
+                if(prog>=.999) {
+                    download_progress.textContent='';
+                    clearInterval(download_prog_interval);
+                }
+                else
+                    download_progress.textContent='下载 '+parseInt(prog*100)+'%';
+            }
         });
+        
+        player.volume=0;
+        player.play();
+        requestAnimationFrame(tick);
         addEventListener('keydown',start);
 
         [ //cache resources

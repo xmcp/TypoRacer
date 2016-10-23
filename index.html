@@ -133,7 +133,7 @@
         %for map in maps:
             <div class="map-item" id="map-item-${map['mapid']}" onmouseover="preview(${map['mapid']})" data-imghash="${map['background']}">
                 <a class="start-btn" href="/game/${map['mapid']}">开始游戏</a>
-                <h1>${map['title']}</h1>
+                <h1>${map['title']|h}</h1>
                 <p><b>${map['version']|h}</b> - by ${map['author']|h}</p>
             </div>
             <link rel="prefetch" href="/img_cache/${map['background']}">
@@ -174,7 +174,7 @@
         if(navigator.appName==='Microsoft Internet Explorer')
             alert('你正在使用 IE 浏览器访问本网站，这是不对的。');
         else if(navigator.userAgent.indexOf('Firefox')!==-1)
-            alert('部分 Firefox 用户在游戏过程中可能遇到频繁掉帧的问题，建议使用 Chrome 浏览器。');
+            alert('部分 Firefox 用户在游戏过程中可能遇到迷之卡顿的问题，建议使用 Chrome 浏览器。');
 
         var cur_dom=null,
             bg_img=document.getElementById('bg-image');
