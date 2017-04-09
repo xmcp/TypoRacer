@@ -32,7 +32,7 @@ def _parse_hit_objs(lines,bpms,slider_speed):
 
     for splited in hit_obj_lines:
         _x,_y,time,typ,_hitsound,*args=splited
-        typ=int(typ)
+        typ=int(typ)%16
         time=int(time)
 
         while bpms[bpm_ind+1][0]<time:
